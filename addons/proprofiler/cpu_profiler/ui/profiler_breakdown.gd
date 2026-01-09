@@ -3,9 +3,15 @@
 # Frame breakdown tree display with timing details
 ###############################################################
 
+class_name ProfilerBreakdown
 extends Tree
 
+const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")
+const ProfilerFrameData = preload("res://addons/proprofiler/cpu_profiler/core/profiler_data.gd")
+const CPUProfiler = preload("res://addons/proprofiler/cpu_profiler/core/cpu_profiler.gd")
+
 var profiler: CPUProfiler
+
 
 func _ready() -> void:
     hide_root = true

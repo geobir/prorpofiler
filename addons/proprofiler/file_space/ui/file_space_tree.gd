@@ -3,7 +3,11 @@
 # Tree view showing folder/file hierarchy with sizes
 ###############################################################
 
+class_name FileSpaceTree
 extends Tree
+
+const ProfilerDesign = preload("res://addons/proprofiler/profiler_design.gd")
+const FileSpaceData = preload("res://addons/proprofiler/file_space/file_space_data.gd")
 
 # Signal emitted when a file is selected (path, extension)
 signal file_selected(file_path: String, file_ext: String)

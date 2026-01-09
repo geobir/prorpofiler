@@ -3,7 +3,11 @@
 # Collects performance metrics from Godot monitors
 ###############################################################
 
+class_name ProfilerCollector
 extends RefCounted
+
+const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")
+const ProfilerFrameData = preload("res://addons/proprofiler/cpu_profiler/core/profiler_data.gd")
 
 ## Collect detailed process/function timing data - GAME ONLY
 func collect_process_data(fd: ProfilerFrameData, delta: float) -> void:

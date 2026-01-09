@@ -3,7 +3,7 @@
 # Main container with tabs for CPU Profiler and File Space
 ###############################################################
 
-# class_name ProfilerTabsUI
+class_name ProfilerTabsUI
 extends VBoxContainer
 
 const ProfilerDesign = preload("res://addons/proprofiler/profiler_design.gd")

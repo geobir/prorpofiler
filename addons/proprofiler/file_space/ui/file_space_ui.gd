@@ -3,7 +3,15 @@
 # Main file space tab: hierarchy tree + breakdown chart
 ###############################################################
 
+class_name FileSpaceUI
 extends VBoxContainer
+
+const ProfilerDesign = preload("res://addons/proprofiler/profiler_design.gd")
+const FileSpaceAnalyzer = preload("res://addons/proprofiler/file_space/file_space_analyzer.gd")
+const FileSpaceData = preload("res://addons/proprofiler/file_space/file_space_data.gd")
+const FileSpaceTree = preload("res://addons/proprofiler/file_space/ui/file_space_tree.gd")
+const FileSpaceChart = preload("res://addons/proprofiler/file_space/ui/file_space_chart.gd")
+
 
 var analyzer: FileSpaceAnalyzer
 var tree_view: FileSpaceTree
