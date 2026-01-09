@@ -377,7 +377,7 @@ func _apply_filter_to_entry(entry: Dictionary) -> void:
     if _check_match(entry, filter_regex, fallback_search_txt):
         var root = _tree.get_root()
         if not root:
-             root = _tree.create_item()
+            root = _tree.create_item()
         
         _add_tree_item(root, entry, 1)
         _filtered_logs.append(entry)
