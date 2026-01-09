@@ -4,8 +4,6 @@
 # Used by all profiler tabs and UI components
 ###############################################################
 
-class_name ProfilerDesign
-
 
 # ──────────────────── PALETTE ────────────────────
 # Apple-inspired minimal color system
