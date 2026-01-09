@@ -17,6 +17,9 @@ var _auto_scroll_chk: CheckBox
 var _realtime_scrape_chk: CheckBox
 var _scrape_timer: Timer
 
+# Reference to the EditorPlugin to access EditorInterface
+var plugin: EditorPlugin
+
 # Data storage
 var _logs: Array = []
 var _filtered_logs: Array = []
@@ -83,24 +86,23 @@ func _ready() -> void:
     _tree.set_column_title(4, "Cat") # Was Type, now Category (moved after Type)
     _tree.set_column_title(5, "Message")
     
-    # Column configuration
-    _tree.set_column_expand(0, false)
-    _tree.set_column_custom_minimum_width(0, 80) # Increased for larger IDs
-    _tree.set_column_expand(1, false) # Count
-    _tree.set_column_custom_minimum_width(1, 45)
-    _tree.set_column_expand(2, false) # Time
-    _tree.set_column_custom_minimum_width(2, 90)
-    _tree.set_column_expand(3, false) # Type
-    _tree.set_column_custom_minimum_width(3, 100)
-    _tree.set_column_expand(4, false) # Category
-    _tree.set_column_custom_minimum_width(4, 120) # Bigger size as requested
-    _tree.set_column_expand(5, true)
+    # Column configuration: Resizable and Balanced
+    var configs = [
+        {"name": "#", "ratio": 1, "min_w": 60},
+        {"name": "x", "ratio": 1, "min_w": 50},
+        {"name": "Time", "ratio": 4, "min_w": 100},
+        {"name": "Type", "ratio": 4, "min_w": 100},
+        {"name": "Cat", "ratio": 8, "min_w": 120},
+        {"name": "Message", "ratio": 50, "min_w": 400}
+    ]
     
-    _tree.set_column_clip_content(0, true)
-    _tree.set_column_clip_content(1, true)
-    _tree.set_column_clip_content(2, true)
-    _tree.set_column_clip_content(3, true)
-    _tree.set_column_clip_content(4, true)
+    for i in range(configs.size()):
+        var cfg = configs[i]
+        _tree.set_column_expand(i, true)
+        _tree.set_column_expand(i, true)
+        _tree.set_column_expand_ratio(i, cfg.ratio)
+        _tree.set_column_custom_minimum_width(i, cfg.min_w)
+        _tree.set_column_clip_content(i, true)
     
     _tree.hide_root = true
     _tree.select_mode = Tree.SELECT_ROW
@@ -283,6 +285,8 @@ func clear_logs() -> void:
     _details_text.text = ""
 
 func _apply_filter() -> void:
+    if not _tree or not _search_bar: return # Not ready yet
+    
     # Rebuild tree from _logs
     _tree.clear()
     var root = _tree.create_item() # Hidden root
@@ -314,7 +318,7 @@ func _apply_filter() -> void:
         # If no special chars, OR regex failed to compile, we proceed with filter_regex = null
         # which triggers the Fallback Literal Search in _check_match
             
-    var do_collapse = _collapse_toggle.button_pressed
+    var do_collapse = _collapse_toggle.button_pressed if _collapse_toggle else false
     
     for entry in _logs:
         if _check_match(entry, filter_regex, fallback_search_txt):
@@ -353,8 +357,10 @@ func _apply_filter() -> void:
             _filtered_logs.append(copy_entry)
 
 func _apply_filter_to_entry(entry: Dictionary) -> void:
+    if not _search_bar or not _tree: return # UI not ready
+    
     # If collapsing is ON, we need to rebuild the whole tree unfortunately
-    if _collapse_toggle.button_pressed:
+    if _collapse_toggle and _collapse_toggle.button_pressed:
         _apply_filter()
         return
 
@@ -383,7 +389,7 @@ func _apply_filter_to_entry(entry: Dictionary) -> void:
         _filtered_logs.append(entry)
         
         # Auto-scroll logic
-        if _auto_scroll_chk.button_pressed:
+        if _auto_scroll_chk and _auto_scroll_chk.button_pressed:
              # Defer scrolling to next frame to ensure item is in tree
             get_tree().create_timer(0.01).timeout.connect(func():
                 if is_instance_valid(_tree):
@@ -401,9 +407,9 @@ func _check_match(entry: Dictionary, filter_regex: RegEx, fallback_txt_lower: St
     # If not error or warning, treat as Info/Script
     var is_info = not (is_error or is_warn)
     
-    if is_error and not _err_toggle.button_pressed: return false
-    if is_warn and not _warn_toggle.button_pressed: return false
-    if is_info and not _info_toggle.button_pressed: return false
+    if is_error and _err_toggle and not _err_toggle.button_pressed: return false
+    if is_warn and _warn_toggle and not _warn_toggle.button_pressed: return false
+    if is_info and _info_toggle and not _info_toggle.button_pressed: return false
     
     # 2. Text Search
     if fallback_txt_lower == "": return true # Empty search matches simple filters
@@ -495,21 +501,28 @@ func _on_item_selected() -> void:
             if count > 1:
                 t += "[color=#8888ff]|Occurrences: " + str(count) + "[/color]\n"
             
+            # Type with color and filter link
+            var type_color = _get_type_color(entry.type)
+            var type_color_html = type_color.to_html(false)
+            t += "[b]Type:[/b] [url=type:" + entry.type + "][color=#" + type_color_html + "][b]" + entry.type + "[/b][/color][/url] (click to filter)\n"
+            
             # Category (clickable)
             if entry.has("category"):
                 var cat = entry.category
                 var cat_color = entry.category_color.to_html(false)
                 t += "[b]Category:[/b] [url=cat:" + cat + "][color=#" + cat_color + "][" + cat + "][/color][/url] (click to filter)\n"
             
-            t += "[b]Type:[/b] " + entry.type + "\n"
             t += "[b]Time:[/b] " + entry.time + "\n"
             
             var msg_clean = _ansi_to_bbcode(entry.message)
             t += "[b]Message:[/b] " + msg_clean + "\n"
-            t += "[color=#555555]----------------------------------------[/color]\n"
+            t += "[color=#555555]────────────────────────────────────────[/color]\n"
             
+            # Details section - make it bold and formatted nicely
             var det_clean = _ansi_to_bbcode(entry.details)
-            t += det_clean
+            # Extract file location info and format it
+            var formatted_details = _format_details_section(det_clean)
+            t += formatted_details
             
             _details_text.text = t
         else:
@@ -525,17 +538,30 @@ func _on_item_activated() -> void:
             _apply_category_filter(entry.category)
 
 func _on_detail_meta_clicked(meta: Variant) -> void:
-    # Handle clicks on category links in the details panel
+    # Handle clicks on links in the details panel
     var meta_str = str(meta)
+    
     if meta_str.begins_with("cat:"):
+        # Category filter
         var cat = meta_str.substr(4) # Remove "cat:" prefix
         _apply_category_filter(cat)
+    elif meta_str.begins_with("type:"):
+        # Type filter
+        var type_name = meta_str.substr(5) # Remove "type:" prefix
+        _apply_type_filter(type_name)
+    elif meta_str.begins_with("file:"):
+        # Open file in editor
+        var file_data = meta_str.substr(5) # Remove "file:" prefix
+        # Format: "path::line"
+        var parts = file_data.split("::")
+        if parts.size() == 2:
+            var file_path = parts[0]
+            var line_num = int(parts[1])
+            _open_file_in_editor(file_path, line_num)
 
 func _apply_category_filter(category: String) -> void:
-    # Set search bar to escaped pattern for this category
-    # Removed anchor '^' to ensure matching even if log line has prefix/colors
-    # Escaping brackets ensure it matches literal [Category] and treated as Regex
-    var pattern = "\\\\[" + category + "\\\\]"
+    # Set search bar to literal bracketed category
+    var pattern = "[" + category + "]"
     _search_bar.text = pattern
     
     # Must manually trigger filter since setting text doesn't emit signal
@@ -879,3 +905,143 @@ func _parse_scraped_text(text: String) -> Dictionary:
         "message": message,
         "details": "Source: Scraped from Editor UI\nRaw Data:\n" + text
     }
+
+func _get_type_color(type_name: String) -> Color:
+    # Return the color for a specific type
+    var type_u = type_name.to_upper()
+    
+    if type_u == "ERROR" or type_u == "SCRIPT_ERROR" or type_u == "SHADER_ERROR":
+        return Color(1, 0.4, 0.4)  # Red
+    elif type_u == "WARNING":
+        return Color(1, 1, 0.4)  # Yellow
+    elif type_u == "SCRIPT":
+        return Color(0.7, 0.5, 1.0)  # Purple/Blue
+    elif type_u == "SHADER":
+        return Color(0.4, 1.0, 1.0)  # Cyan
+    else:
+        return Color(0.7, 0.7, 0.7)  # Gray for info
+
+func _apply_type_filter(type_name: String) -> void:
+    # Filter to show only this type
+    _search_bar.text = ""
+    
+    # Disable all toggles (with null checks for safety)
+    if _err_toggle:
+        _err_toggle.button_pressed = false
+    if _warn_toggle:
+        _warn_toggle.button_pressed = false
+    if _info_toggle:
+        _info_toggle.button_pressed = false
+    
+    # Enable only the selected type
+    var type_u = type_name.to_upper()
+    if type_u == "ERROR" or type_u == "SCRIPT_ERROR" or type_u == "SHADER_ERROR":
+        if _err_toggle:
+            _err_toggle.button_pressed = true
+    elif type_u == "WARNING":
+        if _warn_toggle:
+            _warn_toggle.button_pressed = true
+    else:
+        if _info_toggle:
+            _info_toggle.button_pressed = true
+    
+    _apply_filter()
+
+func _format_details_section(details: String) -> String:
+    # Format the details section with bold headers and clickable file links
+    var lines = details.split("\n")
+    var result = ""
+    
+    for line in lines:
+        var trimmed = line.strip_edges()
+        
+        # Skip empty lines
+        if trimmed == "":
+            result += "\n"
+            continue
+        
+        # Look for file/location patterns
+        # - res://path/to/file.gd:123
+        # - /path/to/file.gd:123
+        # - file.gd:123
+        
+        var file_pattern = RegEx.new()
+        file_pattern.compile("(.*?)(res://[\\w./\\-]+\\.[a-z]+|/?[\\w./\\-]+\\.[a-z]+)(?::(\\d+))?(.*)")
+        
+        var match = file_pattern.search(trimmed)
+        if match and match.get_string(2):  # Has file
+            var before = match.get_string(1).strip_edges()
+            var filepath = match.get_string(2)
+            var line_num = match.get_string(3) if match.get_string(3) else "1"
+            var after = match.get_string(4).strip_edges()
+            
+            # Format as bold header with clickable link
+            var line_text = "[b]" + before + " " if before else "[b]"
+            line_text += "[url=file:" + filepath + "::" + line_num + "][u][color=#6db3f2]" + filepath + ":" + line_num + "[/color][/u][/url]"
+            line_text += "[/b] " + after if after else "[/b]"
+            result += line_text + "\n"
+        else:
+            # Regular line - make it bold if it looks like a section header
+            if ("Location" in trimmed or "File" in trimmed or "Line" in trimmed or 
+                "Stack" in trimmed or "Function" in trimmed or "Source" in trimmed):
+                result += "[b]" + line + "[/b]\n"
+            else:
+                result += line + "\n"
+    
+    return result
+
+func _open_file_in_editor(file_path: String, line_num: int) -> void:
+    # Open the file in the Godot editor at the specified line
+    # This mimics Godot's built-in error click behavior
+    
+    # Resolve the file path - it might be relative to project root
+    var full_path = file_path
+    
+    # Check if it's relative or absolute
+    if not file_path.begins_with("res://") and not file_path.begins_with("/"):
+        # Try as relative to project
+        full_path = "res://" + file_path.trim_prefix("/")
+    
+    if not FileAccess.file_exists(full_path):
+        # Try alternative paths
+        if FileAccess.file_exists("res://" + file_path):
+            full_path = "res://" + file_path
+        elif FileAccess.file_exists(ProjectSettings.globalize_path("res://") + file_path):
+            full_path = ProjectSettings.globalize_path("res://") + file_path
+    
+    # Get the script resource
+    var script = load(full_path)
+    if script:
+        # Open in editor via EditorInterface
+        var editor_iface = _get_editor_interface()
+        if editor_iface:
+            editor_iface.edit_script(script, line_num)
+    else:
+        push_warning("Could not open script: " + full_path)
+
+func _get_editor_interface() -> EditorInterface:
+    # Get EditorInterface through the plugin reference or hierarchy
+    if not Engine.is_editor_hint():
+        return null
+    
+    # 1. Try passing the plugin property
+    if plugin and plugin.has_method("get_editor_interface"):
+        return plugin.get_editor_interface()
+        
+    # 2. Try global keyword (Godot 4.3+)
+    # We use expression to avoid compile error on older versions if it doesn't exist
+    var expr = Expression.new()
+    if expr.parse("EditorInterface") == OK:
+        var result = expr.execute([], self)
+        if result is EditorInterface:
+            return result
+            
+    # 3. Try finding in parent hierarchy
+    var current = get_parent()
+    while current:
+        if current.has_method("get_editor_interface"):
+            return current.get_editor_interface()
+        current = current.get_parent()
+    
+    return null
+

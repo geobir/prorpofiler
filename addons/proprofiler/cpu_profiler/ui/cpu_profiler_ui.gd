@@ -38,6 +38,30 @@ func _ready() -> void:
 
 ## Build entire UI structure
 func _build_ui() -> void:
+    # Warning Panel (Duplicate of Settings warning for clarity)
+    var warning_panel = PanelContainer.new()
+    var warning_stylebox = StyleBoxFlat.new()
+    warning_stylebox.bg_color = Color(0.6, 0.4, 0.2, 0.3)
+    warning_stylebox.set_corner_radius_all(4)
+    warning_panel.add_theme_stylebox_override("panel", warning_stylebox)
+    add_child(warning_panel)
+    
+    var warning_vbox = VBoxContainer.new()
+    warning_vbox.add_theme_constant_override("separation", 6)
+    warning_panel.add_child(warning_vbox)
+    
+    var warning_title = Label.new()
+    warning_title.text = "⚠️  CPU Profiler Status"
+    warning_title.add_theme_font_size_override("font_size", 16)
+    warning_title.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
+    warning_vbox.add_child(warning_title)
+    
+    var warning_text = Label.new()
+    warning_text.text = "The CPU Profiler tab is currently not functional due to Godot's addon API limitations. Godot does not expose sufficient per-process performance data to addons for safe profiling. This feature may be available in future Godot versions."
+    warning_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+    warning_text.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    warning_vbox.add_child(warning_text)
+
     # Stats display
     var stats_panel = PanelContainer.new()
     stats_display = ProfilerStats.new()

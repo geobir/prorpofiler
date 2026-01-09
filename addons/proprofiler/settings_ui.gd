@@ -97,7 +97,7 @@ func _ready() -> void:
     
     var warning_title = Label.new()
     warning_title.text = "⚠️  CPU Profiler Status"
-    warning_title.add_theme_font_size_override("font_size", 12)
+    warning_title.add_theme_font_size_override("font_size", 16)
     warning_title.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
     warning_vbox.add_child(warning_title)
     

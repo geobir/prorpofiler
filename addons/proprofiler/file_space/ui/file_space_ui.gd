@@ -27,6 +27,11 @@ var selected_file_path: String = ""
 var selected_file_ext: String = ""
 var action_buttons: Dictionary = {}  # {action_id: {button, exts}}
 
+# Confirmation dialog for batch actions
+var confirm_dialog: ConfirmationDialog
+var info_dialog: AcceptDialog
+var _pending_action: Callable
+
 
 func _ready() -> void:
     add_theme_constant_override("separation", ProfilerDesign.MARGIN_SMALL)
@@ -113,6 +118,19 @@ func _build_ui() -> void:
     
     var legend_with_actions = _create_legend_with_actions()
     legend_scroll.add_child(legend_with_actions)
+    
+    # ──────────────── Confirmation Dialog ────────────────
+    confirm_dialog = ConfirmationDialog.new()
+    confirm_dialog.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_MAIN_WINDOW_SCREEN
+    confirm_dialog.ok_button_text = "Yes, Proceed"
+    confirm_dialog.cancel_button_text = "Cancel"
+    confirm_dialog.confirmed.connect(_on_confirm_dialog_confirmed)
+    add_child(confirm_dialog)
+    
+    # ──────────────── Info Dialog ────────────────
+    info_dialog = AcceptDialog.new()
+    info_dialog.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_MAIN_WINDOW_SCREEN
+    add_child(info_dialog)
 
 
 func _create_legend_with_actions() -> HBoxContainer:
@@ -348,8 +366,8 @@ func _update_action_buttons() -> void:
         var action_data = action_buttons[action_id]
         var allowed_exts = action_data["exts"]
         
+        # Folder selected - enable ALL actions (they work recursively)
         if is_folder:
-            # Folder selected - enable ALL actions (they work recursively)
             action_data["button"].disabled = false
         else:
             # File selected - enable only if extension matches
@@ -359,6 +377,24 @@ func _update_action_buttons() -> void:
             else:
                 # Enable only if extension is in allowed list
                 action_data["button"].disabled = not selected_file_ext in allowed_exts
+
+
+func _on_confirm_dialog_confirmed() -> void:
+    if _pending_action.is_valid():
+        _pending_action.call()
+
+
+func _show_confirmation(title: String, message: String, action: Callable) -> void:
+    confirm_dialog.title = title
+    confirm_dialog.dialog_text = message
+    _pending_action = action
+    confirm_dialog.popup_centered()
+
+
+func _show_info_dialog(title: String, message: String) -> void:
+    info_dialog.title = title
+    info_dialog.dialog_text = message
+    info_dialog.popup_centered()
 
 
 func _on_action_pressed(action_id: String) -> void:
@@ -383,8 +419,15 @@ func _on_action_pressed(action_id: String) -> void:
 func _action_resize_image() -> void:
     """Resize image(s) to half resolution. Works on single files or all images in folder."""
     if selected_file_ext.is_empty():
-        # It's a folder - resize all images inside
-        _batch_resize_images_in_folder()
+        # It's a folder - confirm before batch resizing
+        var image_exts = ["png", "jpg", "jpeg", "bmp"]
+        var files = _get_all_files_recursive(selected_file_path, image_exts)
+        if files.is_empty():
+            _show_info_dialog("No Images", "No images found in the selected folder.")
+            return
+            
+        var msg = "Are you sure you want to resize %d images in this folder?\n\nThis will permanently overwrite the original files with half-resolution versions." % files.size()
+        _show_confirmation("Confirm Batch Resize", msg, _batch_resize_images_in_folder)
     else:
         # Single image file
         _resize_single_image(selected_file_path)
@@ -430,8 +473,15 @@ func _batch_resize_images_in_folder() -> void:
 func _action_convert_to_jpg() -> void:
     """Convert image(s) to JPG. Works on single files or all convertible images in folder."""
     if selected_file_ext.is_empty():
-        # It's a folder - convert all images inside
-        _batch_convert_to_jpg_in_folder()
+        # It's a folder - confirm before batch conversion
+        var image_exts = ["png", "bmp"]
+        var files = _get_all_files_recursive(selected_file_path, image_exts)
+        if files.is_empty():
+            _show_info_dialog("No Images", "No convertible images (PNG, BMP) found in the selected folder.")
+            return
+            
+        var msg = "Are you sure you want to convert %d images to JPG?\n\nThis will create new .jpg files alongside the originals." % files.size()
+        _show_confirmation("Confirm Batch Conversion", msg, _batch_convert_to_jpg_in_folder)
     else:
         # Single image file
         _convert_single_to_jpg(selected_file_path)
@@ -474,8 +524,15 @@ func _batch_convert_to_jpg_in_folder() -> void:
 func _action_resize_video() -> void:
     """Resize video(s) to half dimensions using ffmpeg. Works on single files or all videos in folder."""
     if selected_file_ext.is_empty():
-        # It's a folder - resize all videos inside
-        _batch_resize_videos_in_folder()
+        # It's a folder - confirm before batch resizing
+        var video_exts = ["mp4", "webm", "mov", "ogv"]
+        var files = _get_all_files_recursive(selected_file_path, video_exts)
+        if files.size() == 0:
+            _show_info_dialog("No Videos", "No videos found in the selected folder.")
+            return
+            
+        var msg = "Are you sure you want to resize %d videos?\n\nThis uses ffmpeg to create half-resolution copies. This may take a long time." % files.size()
+        _show_confirmation("Confirm Batch Video Resize", msg, _batch_resize_videos_in_folder)
     else:
         # Single video file
         _resize_single_video(selected_file_path)
@@ -526,8 +583,15 @@ func _batch_resize_videos_in_folder() -> void:
 func _action_compress_audio() -> void:
     """Compress audio file(s). Works on single files or all audio in folder."""
     if selected_file_ext.is_empty():
-        # It's a folder - compress all audio inside
-        _batch_compress_audio_in_folder()
+        # It's a folder - confirm before batch compression
+        var audio_exts = ["mp3", "ogg", "wav"]
+        var files = _get_all_files_recursive(selected_file_path, audio_exts)
+        if files.size() == 0:
+            _show_info_dialog("No Audio", "No audio files found in the selected folder.")
+            return
+            
+        var msg = "Are you sure you want to compress %d audio files to 128kbps?\n\nThis uses ffmpeg to create compressed copies." % files.size()
+        _show_confirmation("Confirm Batch Audio Compression", msg, _batch_compress_audio_in_folder)
     else:
         # Single audio file
         _compress_single_audio(selected_file_path)

@@ -15,9 +15,24 @@ signal file_selected(file_path: String, file_ext: String)
 func _ready() -> void:
     custom_minimum_size = Vector2(500, 0)
     columns = 3
-    set_column_custom_minimum_width(0, 250)
-    set_column_custom_minimum_width(1, 120)
-    set_column_custom_minimum_width(2, 100)
+    column_titles_visible = true
+    set_column_title(0, "Path")
+    set_column_title(1, "Size")
+    set_column_title(2, "Ratio")
+    
+    # Column configuration: Resizable and Balanced
+    var configs = [
+        {"ratio": 10, "min_w": 250}, # Path
+        {"ratio": 2, "min_w": 100}, # Size
+        {"ratio": 1, "min_w": 80}   # Ratio %
+    ]
+    
+    for i in range(configs.size()):
+        var cfg = configs[i]
+        set_column_expand(i, true)
+        set_column_expand_ratio(i, cfg.ratio)
+        set_column_custom_minimum_width(i, cfg.min_w)
+        set_column_clip_content(i, true)
     
     # Connect selection signal
     item_selected.connect(_on_item_selected)

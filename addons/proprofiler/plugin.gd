@@ -38,6 +38,8 @@ func _enter_tree():
 
     # Main profiler tabs: Logs, CPU Profiler, Disk Usage
     var log_inspector_ui = LogInspectorUI.new()
+    log_inspector_ui.plugin = self # Pass editor plugin for EditorInterface access
+    
     var cpu_profiler_ui = CPUProfilerUI.new()
     var file_space_ui = FileSpaceUI.new()
     var settings_ui = SettingsUI.new()
