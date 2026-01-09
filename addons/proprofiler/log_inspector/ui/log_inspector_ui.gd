@@ -355,8 +355,8 @@ func _apply_filter() -> void:
 func _apply_filter_to_entry(entry: Dictionary) -> void:
     # If collapsing is ON, we need to rebuild the whole tree unfortunately
     if _collapse_toggle.button_pressed:
-         _apply_filter()
-         return
+        _apply_filter()
+        return
 
     # For single entry add, we do a quick check.
     # We could cache the regex, but for single entry add, performance is less critical than 1000 items loop.
@@ -636,7 +636,7 @@ func _on_copy_visible_pressed() -> void:
         if count > 1:
             txt += "|Occurrences: %d\n" % count
         if entry.has("details"):
-             txt += entry.details + "\n"
+            txt += entry.details + "\n"
         txt += "----------------------------------------\n"
     
     if txt != "":
@@ -645,9 +645,9 @@ func _on_copy_visible_pressed() -> void:
     else:
         # User might have clicked copy with empty list or no filters
         if _logs.is_empty():
-             DisplayServer.clipboard_set("No logs captured.")
+            DisplayServer.clipboard_set("No logs captured.")
         else:
-             DisplayServer.clipboard_set("No logs match the current filters.")
+            DisplayServer.clipboard_set("No logs match the current filters.")
 
 func _show_copy_feedback(btn: Button, original_text: String) -> void:
     btn.modulate = Color(0.5, 1.0, 0.5) # Success green
@@ -830,7 +830,7 @@ func _scrape_tree(item: TreeItem, state: Dictionary):
         # 3. Add to log
         var log_entry = _parse_scraped_text(full_data)
         if "ERROR" in log_entry.type: # Ensure we don't misclassify generic headers
-             if is_warning: log_entry.type = "WARNING"
+            if is_warning: log_entry.type = "WARNING"
              
         _dedup_and_add(log_entry, state)
     
@@ -867,7 +867,7 @@ func _parse_scraped_text(text: String) -> Dictionary:
             continue
         # ignore pure generated separators
         if l == "--- Sub-Items ---" or l.begins_with("Tooltip:"):
-             continue 
+            continue 
              
         message = l
         break
