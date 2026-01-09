@@ -11,19 +11,21 @@ _Lightweight Godot addon that centralizes logs, inspects disk usage, and provide
 The `Logs` tab relies on engine support introduced in: https://github.com/godotengine/godot/pull/91006.
 
 ## Quick install
-- Place the `proprofiler` folder under your project's `addons/` folder.
+- Place the `addons/proprofiler` folder under your project's `addons/` folder.
 - Enable the plugin: Project -> Project Settings -> Plugins -> enable `ProProfiler`.
 
 ----
 
 ## Overview (Tabs)
 ### Logs
-- Centralizes editor and runtime logs in one place so you can search, filter, copy and inspect messages without switching windows.
-- Categories: use short square-bracket tags in your logs like `[NETWORK]`, `[SAVE]`, `[AI]`, `[UI]` — feature/area
+Centralizes editor and runtime logs in one place so you can search, filter, copy and inspect messages without switching windows.
+Categories: use short square-bracket tags in your logs like `[NETWORK]`, `[SAVE]`, `[AI]`, `[UI]` — feature/area
 - Log Inspector features:
 - Text search, severity & category filters, and time range selection.
 - Click a log to see the full stack/backtrace and related metadata.
 - Capture runtime logs from connected game instances (requires runtime logger enabled).
+
+![Disk Usage example](media/proprofiler_screen_Logs.png)
 
 ### CPU Profiler
 *The CPU Profiler tab is currently not functional due to Godot's addon API limitations.*
@@ -34,9 +36,7 @@ The `Logs` tab relies on engine support introduced in: https://github.com/godote
 - Features include file-type filters, per-file actions (resize/convert suggestions), and a treemap/table view for drill-down.
 
 
-Example — Disk Usage
-![Disk Usage example](media/proprofiler_screen_DisckUsage.jpg)
-*Disk Usage scan results (project breakdown by file type and sizes).*
+![Disk Usage example](media/proprofiler_screen_DisckUsage.png)
 
 
 ## Usage
