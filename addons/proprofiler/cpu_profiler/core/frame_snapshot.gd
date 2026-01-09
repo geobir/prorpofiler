@@ -4,7 +4,6 @@
 # Critical consts    • none
 ###############################################################
 
-class_name FrameSnapshot
 extends RefCounted
 
 

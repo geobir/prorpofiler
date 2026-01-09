@@ -3,7 +3,6 @@
 # Real-time stats display: FPS, frame time, memory
 ###############################################################
 
-class_name ProfilerStats
 extends HBoxContainer
 
 const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")

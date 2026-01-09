@@ -3,7 +3,6 @@
 # Frame breakdown tree display with timing details
 ###############################################################
 
-class_name ProfilerBreakdown
 extends Tree
 
 const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")

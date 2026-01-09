@@ -3,7 +3,6 @@
 # Main profiler: collects and manages frame data
 ###############################################################
 
-class_name CPUProfiler
 extends RefCounted
 
 const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")

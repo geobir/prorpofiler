@@ -3,7 +3,6 @@
 # Control buttons: pause, reset, peak, frame navigation
 ###############################################################
 
-class_name ProfilerControls
 extends HBoxContainer
 
 const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")

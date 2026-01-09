@@ -3,7 +3,6 @@
 # Horizontal bar chart showing space breakdown by file type
 ###############################################################
 
-class_name FileSpaceChart
 extends Control
 
 const ProfilerDesign = preload("res://addons/proprofiler/profiler_design.gd")

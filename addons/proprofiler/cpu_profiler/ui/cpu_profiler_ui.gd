@@ -3,7 +3,6 @@
 # Main UI container: orchestrates all profiler UI components
 ###############################################################
 
-class_name CPUProfilerUI
 extends VBoxContainer
 
 const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")

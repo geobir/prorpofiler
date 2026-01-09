@@ -3,7 +3,6 @@
 # Data structures for file/folder analysis results
 ###############################################################
 
-class_name FileSpaceData
 extends RefCounted
 
 

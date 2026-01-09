@@ -3,7 +3,6 @@
 # Recursively scans project directory and analyzes file sizes
 ###############################################################
 
-class_name FileSpaceAnalyzer
 extends RefCounted
 
 const ProfilerDesign = preload("res://addons/proprofiler/profiler_design.gd")

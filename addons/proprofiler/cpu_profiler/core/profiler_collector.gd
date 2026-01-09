@@ -3,7 +3,6 @@
 # Collects performance metrics from Godot monitors
 ###############################################################
 
-class_name ProfilerCollector
 extends RefCounted
 
 const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")

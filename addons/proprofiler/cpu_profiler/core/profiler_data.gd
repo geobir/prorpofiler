@@ -3,7 +3,6 @@
 # Data structures: FrameData and ProcessData classes
 ###############################################################
 
-class_name ProfilerFrameData
 extends RefCounted
 
 
