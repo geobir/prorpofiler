@@ -1,6 +1,6 @@
 
 <p align="center">
-	<img src="images/proprofiler_logo.jpg" alt="ProProfiler logo" width="128" style="border-radius: 50%" />
+	<img src="media/proprofiler_logo.jpg" alt="ProProfiler logo" width="128" style="border-radius: 50%" />
 </p>
 
 # ProProfiler
@@ -35,7 +35,7 @@ The `Logs` tab relies on engine support introduced in: https://github.com/godote
 
 
 Example — Disk Usage
-![Disk Usage example](images/proprofiler_screen_DisckUsage.jpg)
+![Disk Usage example](media/proprofiler_screen_DisckUsage.jpg)
 *Disk Usage scan results (project breakdown by file type and sizes).*
 
 
