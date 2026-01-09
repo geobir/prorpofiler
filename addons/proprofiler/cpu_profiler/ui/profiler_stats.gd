@@ -3,10 +3,7 @@
 # Real-time stats display: FPS, frame time, memory
 ###############################################################
 
-class_name ProfilerStats
 extends HBoxContainer
-
-const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")
 
 var lbl_fps: Label
 var lbl_average_fps: Label

@@ -3,9 +3,7 @@
 # Data structures for file/folder analysis results
 ###############################################################
 
-class_name FileSpaceData
 extends RefCounted
-
 
 ## Single file/folder entry
 class FileEntry:

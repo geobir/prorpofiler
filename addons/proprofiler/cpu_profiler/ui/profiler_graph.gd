@@ -3,10 +3,7 @@
 # Graph visualization and frame selection
 ###############################################################
 
-class_name ProfilerGraph
 extends Control
-
-const ProfilerConstants = preload("res://addons/proprofiler/cpu_profiler/core/profiler_constants.gd")
 
 var profiler: CPUProfiler
 var on_frame_selected: Callable
