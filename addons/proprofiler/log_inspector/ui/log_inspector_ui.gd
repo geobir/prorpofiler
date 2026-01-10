@@ -17,6 +17,26 @@ var _auto_scroll_chk: CheckBox
 var _realtime_scrape_chk: CheckBox
 var _scrape_timer: Timer
 
+# Column configuration: widths driven by code (for manual resizing)
+var configs = [
+    {"name": "#", "min_w": 60},
+    {"name": "x", "min_w": 50},
+    {"name": "Time", "min_w": 100},
+    {"name": "Type", "min_w": 100},
+    {"name": "Cat", "min_w": 60},
+    {"name": "Message", "min_w": 400}
+]
+# Column resize state
+var _col_widths: PackedInt32Array = PackedInt32Array()
+var _resize_drag_col: int = -1
+var _resize_drag_start_x: float = 0.0
+var _resize_drag_start_w: int = 0
+var _resize_hit_px: float = 5.0 # Thickness (px) of the hit area near column separators
+var _col_sep_overlay: Control
+var _show_separators: bool = true
+
+
+
 # Reference to the EditorPlugin to access EditorInterface
 var plugin: EditorPlugin
 
@@ -85,24 +105,19 @@ func _ready() -> void:
     _tree.set_column_title(3, "Type") # Was Time
     _tree.set_column_title(4, "Cat") # Was Type, now Category (moved after Type)
     _tree.set_column_title(5, "Message")
-    
-    # Column configuration: Resizable and Balanced
-    var configs = [
-        {"name": "#", "ratio": 1, "min_w": 60},
-        {"name": "x", "ratio": 1, "min_w": 50},
-        {"name": "Time", "ratio": 4, "min_w": 100},
-        {"name": "Type", "ratio": 4, "min_w": 100},
-        {"name": "Cat", "ratio": 8, "min_w": 120},
-        {"name": "Message", "ratio": 50, "min_w": 400}
-    ]
-    
+
+    _col_widths = PackedInt32Array()
+    _col_widths.resize(configs.size())
     for i in range(configs.size()):
-        var cfg = configs[i]
-        _tree.set_column_expand(i, true)
-        _tree.set_column_expand(i, true)
-        _tree.set_column_expand_ratio(i, cfg.ratio)
-        _tree.set_column_custom_minimum_width(i, cfg.min_w)
-        _tree.set_column_clip_content(i, true)
+        _col_widths[i] = int(configs[i].min_w)
+
+    _apply_column_widths()
+
+    # Enable mouse-driven resizing
+    _tree.gui_input.connect(_on_tree_gui_input)
+    _tree.mouse_filter = Control.MOUSE_FILTER_STOP
+    _tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
     
     _tree.hide_root = true
     _tree.select_mode = Tree.SELECT_ROW
@@ -110,6 +125,23 @@ func _ready() -> void:
     _tree.item_activated.connect(_on_item_activated) # Double-click or Enter
     _tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
     left_split.add_child(_tree)
+    
+    # Overlay to draw visible column separators on the Tree header
+    _col_sep_overlay = ColumnSeparatorOverlay.new()
+    _col_sep_overlay.owner_ui = self
+    _col_sep_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _col_sep_overlay.top_level = false
+    _col_sep_overlay.z_index = 1000
+    _tree.add_child(_col_sep_overlay)
+    _tree.move_child(_col_sep_overlay, _tree.get_child_count() - 1)
+
+    # Ensure overlay keeps correct size and redraws when Tree resizes
+    _tree.resized.connect(func():
+        _update_col_sep_overlay()
+    )
+
+    _update_col_sep_overlay()
+
     
     # Details - Swtiched to RichTextLabel for formatting
     _details_text = RichTextLabel.new()
@@ -1045,3 +1077,141 @@ func _get_editor_interface() -> EditorInterface:
     
     return null
 
+
+func _apply_column_widths() -> void:
+    if not is_instance_valid(_tree):
+        return
+
+    var n := _tree.columns
+    if _col_widths.size() != n:
+        _col_widths.resize(n)
+
+    # Apply per-column minimums and current widths
+    for i in range(n):
+        var min_w := 30
+        if i < configs.size():
+            min_w = int(configs[i].min_w)
+
+        var target_w := max(min_w, int(_col_widths[i]))
+        _col_widths[i] = target_w
+
+        _tree.set_column_expand(i, false)
+        _tree.set_column_custom_minimum_width(i, target_w)
+
+    # Let the last column take remaining space
+    if n > 0:
+        _tree.set_column_expand(n - 1, true)
+
+    # Force redraw/layout refresh (Tree has no queue_sort; minimum_size_changed is a signal)
+    _tree.queue_redraw()
+
+    _tree.call_deferred("queue_redraw")
+
+    # Keep separator overlay in sync
+    _update_col_sep_overlay()
+    _col_sep_overlay.call_deferred("queue_redraw")
+
+
+
+func _header_height_px() -> float:
+    # Approx header height in editor UI; tweak if needed (24/26/28).
+    return 24.0
+
+
+func _on_tree_gui_input(ev: InputEvent) -> void:
+    if not is_instance_valid(_tree):
+        return
+
+    var header_h := _header_height_px()
+
+    if ev is InputEventMouseMotion:
+        var m := ev as InputEventMouseMotion
+
+        # Dragging a separator
+        if _resize_drag_col != -1:
+            var dx := m.position.x - _resize_drag_start_x
+            var new_w := int(_resize_drag_start_w + dx)
+            var min_w := 30
+            if _resize_drag_col >= 0 and _resize_drag_col < configs.size():
+                min_w = int(configs[_resize_drag_col]["min_w"])
+            new_w = max(min_w, new_w)
+            _col_widths[_resize_drag_col] = new_w
+            _apply_column_widths()
+            _tree.accept_event()
+            return
+
+        # Cursor feedback when hovering a separator in the header
+        if m.position.y <= header_h:
+            var x_acc := 0.0
+            # Separators between columns 0..n-2
+            for c in range(_tree.columns - 1):
+                x_acc += float(_col_widths[c])
+                if abs(m.position.x - x_acc) <= _resize_hit_px:
+                    _tree.mouse_default_cursor_shape = Control.CURSOR_HSIZE
+                    return
+
+        _tree.mouse_default_cursor_shape = Control.CURSOR_ARROW
+        return
+
+    if ev is InputEventMouseButton:
+        var b := ev as InputEventMouseButton
+        if b.button_index != MOUSE_BUTTON_LEFT:
+            return
+
+        # Release
+        if not b.pressed:
+            _resize_drag_col = -1
+            return
+
+        # Header-only click
+        if b.position.y > header_h:
+            return
+
+        # Detect click near a separator
+        var x_acc := 0.0
+        for c in range(_tree.columns - 1):
+            x_acc += float(_col_widths[c])
+            if abs(b.position.x - x_acc) <= _resize_hit_px:
+                _resize_drag_col = c
+                _resize_drag_start_x = b.position.x
+                _resize_drag_start_w = int(_col_widths[c])
+                _tree.accept_event()
+                return
+
+func _update_col_sep_overlay() -> void:
+    if not is_instance_valid(_tree) or not is_instance_valid(_col_sep_overlay):
+        return
+
+    var header_h := _header_height_px()
+
+    # Overlay covers only the header area
+    _col_sep_overlay.position = Vector2(0, 0)
+    _col_sep_overlay.size = Vector2(_tree.size.x, header_h)
+
+    _col_sep_overlay.queue_redraw()
+
+
+func _draw_col_separators(ci: CanvasItem) -> void:
+    # Draw subtle vertical lines at each column boundary
+    if not _show_separators:
+        return
+
+    var header_h := _header_height_px()
+
+    # Pick a color that works in the editor (light line with some transparency)
+    var line_color := Color(1, 1, 1, 0.18)
+
+    var x_acc := 0.0
+    for c in range(_tree.columns - 1):
+        x_acc += float(_col_widths[c])
+        # 1px line
+        ci.draw_line(Vector2(x_acc, 2), Vector2(x_acc, header_h - 2), line_color, 1.0)
+        # optional: make it a tiny bit more visible by adding a darker twin line
+        ci.draw_line(Vector2(x_acc + 1, 2), Vector2(x_acc + 1, header_h - 2), Color(0, 0, 0, 0.12), 1.0)
+
+class ColumnSeparatorOverlay extends Control:
+    var owner_ui: Node
+
+    func _draw() -> void:
+        if owner_ui and owner_ui.has_method("_draw_col_separators"):
+            owner_ui._draw_col_separators(self)
