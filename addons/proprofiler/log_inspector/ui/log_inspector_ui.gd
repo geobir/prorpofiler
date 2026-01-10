@@ -17,6 +17,24 @@ var _auto_scroll_chk: CheckBox
 var _realtime_scrape_chk: CheckBox
 var _scrape_timer: Timer
 
+# Column configuration: widths driven by code (for manual resizing)
+var configs = [
+    {"name": "#", "min_w": 60},
+    {"name": "x", "min_w": 50},
+    {"name": "Time", "min_w": 100},
+    {"name": "Type", "min_w": 100},
+    {"name": "Cat", "min_w": 60},
+    {"name": "Message", "min_w": 400}
+]
+# Column resize state
+var _col_widths: PackedInt32Array = PackedInt32Array()
+var _resize_drag_col: int = -1
+var _resize_drag_start_x: float = 0.0
+var _resize_drag_start_w: int = 0
+var _resize_hit_px: float = 5.0 # Thickness (px) of the hit area near column separators
+var _col_sep_overlay: Control
+var _show_separators: bool = true
+
 # Reference to the EditorPlugin to access EditorInterface
 var plugin: EditorPlugin
 
@@ -30,6 +48,7 @@ var _total_count: int = 0
 # Scraper Optimization
 var _cached_debugger_node: Node = null
 var _last_item_counts: Dictionary = {} # Key: Object ID, Value: last count
+
 
 func _ready() -> void:
     name = "LogInspectorUI"
@@ -85,24 +104,19 @@ func _ready() -> void:
     _tree.set_column_title(3, "Type") # Was Time
     _tree.set_column_title(4, "Cat") # Was Type, now Category (moved after Type)
     _tree.set_column_title(5, "Message")
-    
-    # Column configuration: Resizable and Balanced
-    var configs = [
-        {"name": "#", "ratio": 1, "min_w": 60},
-        {"name": "x", "ratio": 1, "min_w": 50},
-        {"name": "Time", "ratio": 4, "min_w": 100},
-        {"name": "Type", "ratio": 4, "min_w": 100},
-        {"name": "Cat", "ratio": 8, "min_w": 120},
-        {"name": "Message", "ratio": 50, "min_w": 400}
-    ]
-    
+
+    _col_widths = PackedInt32Array()
+    _col_widths.resize(configs.size())
     for i in range(configs.size()):
-        var cfg = configs[i]
-        _tree.set_column_expand(i, true)
-        _tree.set_column_expand(i, true)
-        _tree.set_column_expand_ratio(i, cfg.ratio)
-        _tree.set_column_custom_minimum_width(i, cfg.min_w)
-        _tree.set_column_clip_content(i, true)
+        _col_widths[i] = int(configs[i].min_w)
+
+    _apply_column_widths()
+
+    # Enable mouse-driven resizing
+    _tree.gui_input.connect(_on_tree_gui_input)
+    _tree.mouse_filter = Control.MOUSE_FILTER_STOP
+    _tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
     
     _tree.hide_root = true
     _tree.select_mode = Tree.SELECT_ROW
@@ -110,6 +124,23 @@ func _ready() -> void:
     _tree.item_activated.connect(_on_item_activated) # Double-click or Enter
     _tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
     left_split.add_child(_tree)
+    
+    # Overlay to draw visible column separators on the Tree header
+    _col_sep_overlay = ColumnSeparatorOverlay.new()
+    _col_sep_overlay.owner_ui = self
+    _col_sep_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _col_sep_overlay.top_level = false
+    _col_sep_overlay.z_index = 1000
+    _tree.add_child(_col_sep_overlay)
+    _tree.move_child(_col_sep_overlay, _tree.get_child_count() - 1)
+
+    # Ensure overlay keeps correct size and redraws when Tree resizes
+    _tree.resized.connect(func():
+        _update_col_sep_overlay()
+    )
+
+    _update_col_sep_overlay()
+
     
     # Details - Swtiched to RichTextLabel for formatting
     _details_text = RichTextLabel.new()
@@ -250,6 +281,7 @@ func _ready() -> void:
     add_child(_scrape_timer)
     _scrape_timer.start()
 
+
 func _reset_tree_status() -> void:
     _tree.clear()
     _total_count = 0
@@ -259,6 +291,7 @@ func _reset_tree_status() -> void:
     _waiting_node.set_text(1, "--:--")
     _waiting_node.set_text(2, "STATUS")
     _waiting_node.set_text(3, "Waiting for logs... (Run the game or Scrape)")
+
 
 func add_log(entry: Dictionary) -> void:
     # Remove waiting node if it exists
@@ -278,11 +311,13 @@ func add_log(entry: Dictionary) -> void:
     _logs.append(entry)
     _apply_filter_to_entry(entry)
 
+
 func clear_logs() -> void:
     _logs.clear()
     _filtered_logs.clear()
     _reset_tree_status()
     _details_text.text = ""
+
 
 func _apply_filter() -> void:
     if not _tree or not _search_bar: return # Not ready yet
@@ -356,6 +391,7 @@ func _apply_filter() -> void:
             copy_entry["collapse_count"] = val.count
             _filtered_logs.append(copy_entry)
 
+
 func _apply_filter_to_entry(entry: Dictionary) -> void:
     if not _search_bar or not _tree: return # UI not ready
     
@@ -398,6 +434,7 @@ func _apply_filter_to_entry(entry: Dictionary) -> void:
                         _tree.scroll_to_item(last)
             )
 
+
 # Unified match logic that takes pre-compiled regex (or null) and fallback string
 func _check_match(entry: Dictionary, filter_regex: RegEx, fallback_txt_lower: String) -> bool:
     # 1. Toggle Selection
@@ -433,9 +470,11 @@ func _check_match(entry: Dictionary, filter_regex: RegEx, fallback_txt_lower: St
         
     return false
 
+
 # DEPRECATED: Old function, keeping mainly if called elsewhere but shouldn't be
 func _matches_filter(entry: Dictionary, filter_txt: String) -> bool:
     return _check_match(entry, null, filter_txt) # Treat as plain text fallback
+
 
 func _add_tree_item(root: TreeItem, entry: Dictionary, count: int) -> void:
     var item = _tree.create_item(root)
@@ -490,6 +529,7 @@ func _add_tree_item(root: TreeItem, entry: Dictionary, count: int) -> void:
         if i == 4: continue # Skip category column (has its own color)
         item.set_custom_color(i, color)
 
+
 func _on_item_selected() -> void:
     var item = _tree.get_selected()
     if item:
@@ -528,6 +568,7 @@ func _on_item_selected() -> void:
         else:
             _details_text.text = ""
 
+
 func _on_item_activated() -> void:
     # User double-clicked or pressed Enter on a row
     # If the row has a category, apply filter
@@ -536,6 +577,7 @@ func _on_item_activated() -> void:
         var entry = item.get_metadata(0)
         if typeof(entry) == TYPE_DICTIONARY and entry.has("category"):
             _apply_category_filter(entry.category)
+
 
 func _on_detail_meta_clicked(meta: Variant) -> void:
     # Handle clicks on links in the details panel
@@ -559,6 +601,7 @@ func _on_detail_meta_clicked(meta: Variant) -> void:
             var line_num = int(parts[1])
             _open_file_in_editor(file_path, line_num)
 
+
 func _apply_category_filter(category: String) -> void:
     # Set search bar to literal bracketed category
     var pattern = "[" + category + "]"
@@ -567,17 +610,21 @@ func _apply_category_filter(category: String) -> void:
     # Must manually trigger filter since setting text doesn't emit signal
     _apply_filter()
 
+
 func _on_search_text_changed(new_text: String) -> void:
     _apply_filter()
+
 
 func _on_search_clear_pressed() -> void:
     _search_bar.text = ""
     _apply_filter()
 
+
 func _on_copy_details_pressed() -> void:
     if _details_text.text != "":
         DisplayServer.clipboard_set(_details_text.get_parsed_text()) # Copy raw text, not bbcode
         _show_copy_feedback(_copy_details_btn, "Copy Selected Detail")
+
 
 func _strip_formatting(text: String) -> String:
     # Strip both ANSI codes and BBCode tags
@@ -599,6 +646,7 @@ func _strip_formatting(text: String) -> String:
     res = reg_bbcode.sub(res, "", true)
     
     return res
+
 
 func _ansi_to_bbcode(text: String) -> String:
     # Convert ANSI codes to BBCode, handling both escape sequences and literal formats
@@ -632,6 +680,7 @@ func _ansi_to_bbcode(text: String) -> String:
     
     return res
 
+
 func _extract_category(message: String) -> String:
     # Extract category from message like "[Core] Something happened"
     # Returns "Core" (case preserved as typed)
@@ -641,6 +690,7 @@ func _extract_category(message: String) -> String:
     if match:
         return match.get_string(1)
     return ""
+
 
 func _category_color(category: String) -> Color:
     # Generate a consistent color from category name using hash
@@ -653,6 +703,7 @@ func _category_color(category: String) -> Color:
     
     # Convert HSV to RGB
     return Color.from_hsv(hue, saturation, value)
+
 
 func _on_copy_visible_pressed() -> void:
     var txt = ""
@@ -675,6 +726,7 @@ func _on_copy_visible_pressed() -> void:
         else:
             DisplayServer.clipboard_set("No logs match the current filters.")
 
+
 func _show_copy_feedback(btn: Button, original_text: String) -> void:
     btn.modulate = Color(0.5, 1.0, 0.5) # Success green
     btn.text = "✓ Copied!"
@@ -684,8 +736,10 @@ func _show_copy_feedback(btn: Button, original_text: String) -> void:
             btn.text = original_text
     )
 
+
 func _on_scrape_pressed() -> void:
     _perform_scrape()
+
 
 func _on_auto_scrape_timer() -> void:
     if not is_visible_in_tree(): return # Save CPU if tab is hidden
@@ -693,6 +747,7 @@ func _on_auto_scrape_timer() -> void:
     # Lightweight check before doing full scrape
     if _check_if_debugger_changed():
         _perform_scrape()
+
 
 func _perform_scrape() -> void:
     # Attempt to find the EditorDebuggerNode and scrape its current list
@@ -740,6 +795,7 @@ func _get_debugger_node() -> Node:
     _cached_debugger_node = _find_debugger_node(base)
     return _cached_debugger_node
 
+
 func _check_if_debugger_changed() -> bool:
     var node = _get_debugger_node()
     if not node: return false
@@ -773,11 +829,13 @@ func _check_if_debugger_changed() -> bool:
             
     return changed
 
+
 func _add_scraped_log_if_new(raw_text: String, state: Dictionary) -> void:
     # This helper is for ItemList strings. Tree items call add_log directly in _scrape_tree.
     # We should update _scrape_tree to use a dedup check too.
     var entry = _parse_scraped_text(raw_text)
     _dedup_and_add(entry, state)
+
 
 func _dedup_and_add(entry: Dictionary, state: Dictionary) -> void:
     # Check if this exact message was added recently (in last 20 logs)
@@ -796,6 +854,7 @@ func _dedup_and_add(entry: Dictionary, state: Dictionary) -> void:
         add_log(entry)
         state.count += 1
 
+
 func _find_debugger_node(node: Node) -> Node:
     if node.get_class() == "EditorDebuggerNode":
         return node
@@ -804,11 +863,13 @@ func _find_debugger_node(node: Node) -> Node:
         if res: return res
     return null
 
+
 func _find_item_containers(node: Node, results: Array):
     if node is Tree or node is ItemList:
         results.append(node)
     for child in node.get_children():
         _find_item_containers(child, results)
+
 
 func _scrape_tree(item: TreeItem, state: Dictionary):
     if not item: return
@@ -871,6 +932,7 @@ func _scrape_tree(item: TreeItem, state: Dictionary):
             _scrape_tree(sub_child, state)
             sub_child = sub_child.get_next()
 
+
 func _parse_scraped_text(text: String) -> Dictionary:
     var type = "INFO"
     var is_warning = false
@@ -906,6 +968,7 @@ func _parse_scraped_text(text: String) -> Dictionary:
         "details": "Source: Scraped from Editor UI\nRaw Data:\n" + text
     }
 
+
 func _get_type_color(type_name: String) -> Color:
     # Return the color for a specific type
     var type_u = type_name.to_upper()
@@ -920,6 +983,7 @@ func _get_type_color(type_name: String) -> Color:
         return Color(0.4, 1.0, 1.0)  # Cyan
     else:
         return Color(0.7, 0.7, 0.7)  # Gray for info
+
 
 func _apply_type_filter(type_name: String) -> void:
     # Filter to show only this type
@@ -946,6 +1010,7 @@ func _apply_type_filter(type_name: String) -> void:
             _info_toggle.button_pressed = true
     
     _apply_filter()
+
 
 func _format_details_section(details: String) -> String:
     # Format the details section with bold headers and clickable file links
@@ -990,6 +1055,7 @@ func _format_details_section(details: String) -> String:
     
     return result
 
+
 func _open_file_in_editor(file_path: String, line_num: int) -> void:
     # Open the file in the Godot editor at the specified line
     # This mimics Godot's built-in error click behavior
@@ -1019,6 +1085,7 @@ func _open_file_in_editor(file_path: String, line_num: int) -> void:
     else:
         push_warning("Could not open script: " + full_path)
 
+
 func _get_editor_interface() -> EditorInterface:
     # Get EditorInterface through the plugin reference or hierarchy
     if not Engine.is_editor_hint():
@@ -1045,3 +1112,142 @@ func _get_editor_interface() -> EditorInterface:
     
     return null
 
+
+func _apply_column_widths() -> void:
+    if not is_instance_valid(_tree):
+        return
+
+    var n := _tree.columns
+    if _col_widths.size() != n:
+        _col_widths.resize(n)
+
+    # Apply per-column minimums and current widths
+    for i in range(n):
+        var min_w := 30
+        if i < configs.size():
+            min_w = int(configs[i].min_w)
+
+        var target_w := max(min_w, int(_col_widths[i]))
+        _col_widths[i] = target_w
+
+        _tree.set_column_expand(i, false)
+        _tree.set_column_custom_minimum_width(i, target_w)
+
+    # Let the last column take remaining space
+    if n > 0:
+        _tree.set_column_expand(n - 1, true)
+
+    # Force redraw/layout refresh (Tree has no queue_sort; minimum_size_changed is a signal)
+    _tree.queue_redraw()
+
+    _tree.call_deferred("queue_redraw")
+
+    # Keep separator overlay in sync
+    _update_col_sep_overlay()
+    _col_sep_overlay.call_deferred("queue_redraw")
+
+
+
+func _header_height_px() -> float:
+    # Approx header height in editor UI; tweak if needed (24/26/28).
+    return 24.0
+
+
+func _on_tree_gui_input(ev: InputEvent) -> void:
+    if not is_instance_valid(_tree):
+        return
+
+    var header_h := _header_height_px()
+
+    if ev is InputEventMouseMotion:
+        var m := ev as InputEventMouseMotion
+
+        # Dragging a separator
+        if _resize_drag_col != -1:
+            var dx := m.position.x - _resize_drag_start_x
+            var new_w := int(_resize_drag_start_w + dx)
+            var min_w := 30
+            if _resize_drag_col >= 0 and _resize_drag_col < configs.size():
+                min_w = int(configs[_resize_drag_col]["min_w"])
+            new_w = max(min_w, new_w)
+            _col_widths[_resize_drag_col] = new_w
+            _apply_column_widths()
+            _tree.accept_event()
+            return
+
+        # Cursor feedback when hovering a separator in the header
+        if m.position.y <= header_h:
+            var x_acc := 0.0
+            # Separators between columns 0..n-2
+            for c in range(_tree.columns - 1):
+                x_acc += float(_col_widths[c])
+                if abs(m.position.x - x_acc) <= _resize_hit_px:
+                    _tree.mouse_default_cursor_shape = Control.CURSOR_HSIZE
+                    return
+
+        _tree.mouse_default_cursor_shape = Control.CURSOR_ARROW
+        return
+
+    if ev is InputEventMouseButton:
+        var b := ev as InputEventMouseButton
+        if b.button_index != MOUSE_BUTTON_LEFT:
+            return
+
+        # Release
+        if not b.pressed:
+            _resize_drag_col = -1
+            return
+
+        # Header-only click
+        if b.position.y > header_h:
+            return
+
+        # Detect click near a separator
+        var x_acc := 0.0
+        for c in range(_tree.columns - 1):
+            x_acc += float(_col_widths[c])
+            if abs(b.position.x - x_acc) <= _resize_hit_px:
+                _resize_drag_col = c
+                _resize_drag_start_x = b.position.x
+                _resize_drag_start_w = int(_col_widths[c])
+                _tree.accept_event()
+                return
+
+
+func _update_col_sep_overlay() -> void:
+    if not is_instance_valid(_tree) or not is_instance_valid(_col_sep_overlay):
+        return
+
+    var header_h := _header_height_px()
+
+    # Overlay covers only the header area
+    _col_sep_overlay.position = Vector2(0, 0)
+    _col_sep_overlay.size = Vector2(_tree.size.x, header_h)
+
+    _col_sep_overlay.queue_redraw()
+
+
+func _draw_col_separators(ci: CanvasItem) -> void:
+    # Draw subtle vertical lines at each column boundary
+    if not _show_separators:
+        return
+
+    var header_h := _header_height_px()
+
+    # Pick a color that works in the editor (light line with some transparency)
+    var line_color := Color(1, 1, 1, 0.18)
+
+    var x_acc := 0.0
+    for c in range(_tree.columns - 1):
+        x_acc += float(_col_widths[c])
+        # 1px line
+        ci.draw_line(Vector2(x_acc, 2), Vector2(x_acc, header_h - 2), line_color, 1.0)
+        # optional: make it a tiny bit more visible by adding a darker twin line
+        ci.draw_line(Vector2(x_acc + 1, 2), Vector2(x_acc + 1, header_h - 2), Color(0, 0, 0, 0.12), 1.0)
+
+class ColumnSeparatorOverlay extends Control:
+    var owner_ui: Node
+
+    func _draw() -> void:
+        if owner_ui and owner_ui.has_method("_draw_col_separators"):
+            owner_ui._draw_col_separators(self)
