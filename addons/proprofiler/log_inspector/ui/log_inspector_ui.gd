@@ -21,7 +21,7 @@ var _scrape_timer: Timer
 var configs = [
     {"name": "#", "min_w": 60},
     {"name": "x", "min_w": 50},
-    {"name": "Time", "min_w": 100},
+    {"name": "Time", "min_w": 100}, # Will be translated in _ready
     {"name": "Type", "min_w": 100},
     {"name": "Cat", "min_w": 60},
     {"name": "Message", "min_w": 400}
@@ -55,6 +55,12 @@ func _ready() -> void:
     size_flags_horizontal = Control.SIZE_EXPAND_FILL
     size_flags_vertical = Control.SIZE_EXPAND_FILL
     
+    # Translate columns
+    configs[2]["name"] = ProProfilerLocalization.localize("logs.col.time", "Time")
+    configs[3]["name"] = ProProfilerLocalization.localize("logs.col.type", "Type")
+    configs[4]["name"] = ProProfilerLocalization.localize("logs.col.cat", "Cat")
+    configs[5]["name"] = ProProfilerLocalization.localize("logs.col.message", "Message")
+    
     # Main Vertical Container
     var main_vbox = VBoxContainer.new()
     main_vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -69,15 +75,15 @@ func _ready() -> void:
     header.add_child(search_hbox)
     
     _search_bar = LineEdit.new()
-    _search_bar.placeholder_text = "Search logs..."
+    _search_bar.placeholder_text = ProProfilerLocalization.localize("logs.search_placeholder", "Search logs...")
     _search_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _search_bar.text_changed.connect(_on_search_text_changed)
-    _search_bar.tooltip_text = "Supports Regex patterns (e.g., Error\\s\\d+)"
+    _search_bar.tooltip_text = ProProfilerLocalization.localize("logs.search_tooltip", "Supports Regex patterns (e.g., Error\\s\\d+)")
     search_hbox.add_child(_search_bar)
     
     _search_clear_btn = Button.new()
     _search_clear_btn.text = "×"
-    _search_clear_btn.tooltip_text = "Clear search"
+    _search_clear_btn.tooltip_text = ProProfilerLocalization.localize("logs.clear_search_tooltip", "Clear search")
     _search_clear_btn.custom_minimum_size = Vector2(32, 0)
     _search_clear_btn.pressed.connect(_on_search_clear_pressed)
     search_hbox.add_child(_search_clear_btn)
@@ -1144,7 +1150,7 @@ func _apply_column_widths() -> void:
 
     # Keep separator overlay in sync
     _update_col_sep_overlay()
-    _col_sep_overlay.call_deferred("queue_redraw")
+    # _tree.call_deferred("queue_redraw")
 
 
 

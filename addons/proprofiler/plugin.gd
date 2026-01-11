@@ -9,12 +9,15 @@ var EditorLogCapture = preload("res://addons/proprofiler/log_inspector/editor_lo
 var SettingsUI = preload("res://addons/proprofiler/settings_ui.gd")
 
 var _profiler_dock: Panel
+var _tabs: TabContainer
 var _log_debugger: EditorDebuggerPlugin
 var _editor_logger: Logger
 var tab_name: String = "🔎ProProfiler"
 
 
 func _enter_tree():
+    ProProfilerLocalization.load_translations()
+    
     # Create a dock with a TabContainer and multiple sub-tabs for profiling info.
     _profiler_dock = Panel.new()
     _profiler_dock.name = "GDProfilerDock"
@@ -30,11 +33,11 @@ func _enter_tree():
     _profiler_dock.add_child(main_container)
     
     # TabContainer for all tabs
-    var tabs = TabContainer.new()
-    tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    tabs.custom_minimum_size = Vector2(400, 240)
-    main_container.add_child(tabs)
+    _tabs = TabContainer.new()
+    _tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    _tabs.custom_minimum_size = Vector2(400, 240)
+    main_container.add_child(_tabs)
 
     # Main profiler tabs: Logs, CPU Profiler, Disk Usage
     var log_inspector_ui = LogInspectorUI.new()
@@ -43,17 +46,24 @@ func _enter_tree():
     var cpu_profiler_ui = CPUProfilerUI.new()
     var file_space_ui = FileSpaceUI.new()
     var settings_ui = SettingsUI.new()
+    settings_ui.plugin = self
 
-    tabs.add_child(log_inspector_ui)
-    tabs.add_child(cpu_profiler_ui)
-    tabs.add_child(file_space_ui)
-    tabs.add_child(settings_ui)
+    _tabs.add_child(log_inspector_ui)
+    _tabs.add_child(cpu_profiler_ui)
+    _tabs.add_child(file_space_ui)
+    _tabs.add_child(settings_ui)
 
     # Set titles for tabs
-    tabs.set_tab_title(0, "🖨️ Logs")
-    tabs.set_tab_title(1, "⚡ CPU Profiler")
-    tabs.set_tab_title(2, "💾 Disk Usage")
-    tabs.set_tab_title(3, "⚙️ Settings")
+    _tabs.set_tab_title(0, ProProfilerLocalization.localize("tabs.logs", "🖨️ Logs"))
+    _tabs.set_tab_title(1, ProProfilerLocalization.localize("tabs.cpu", "⚡ CPU Profiler"))
+    _tabs.set_tab_title(2, ProProfilerLocalization.localize("tabs.disk", "💾 Disk Usage"))
+    _tabs.set_tab_title(3, ProProfilerLocalization.localize("tabs.settings", "⚙️ Settings"))
+
+    # Connect settings change
+    settings_ui.setting_changed.connect(_on_setting_changed)
+    
+    # Apply initial visibility
+    _apply_initial_visibility(settings_ui)
 
     add_control_to_bottom_panel(_profiler_dock, tab_name)
 
@@ -70,7 +80,26 @@ func _enter_tree():
     # Add Runtime Logger as Autoload to capture advanced backtraces in game
     add_autoload_singleton("GDProfilerLogger", "res://addons/proprofiler/log_inspector/runtime_logger.gd")
 
-    print_rich("[b]Godot ProProfiler has Loaded![/b]")
+    print_rich(ProProfilerLocalization.localize("logs.loaded", "[b]Godot ProProfiler has Loaded![/b]"))
+
+
+func _on_setting_changed(key: String, value: Variant) -> void:
+    match key:
+        "show_logs": _tabs.set_tab_hidden(0, !value)
+        "show_cpu": _tabs.set_tab_hidden(1, !value)
+        "show_disk": _tabs.set_tab_hidden(2, !value)
+        "language":
+            # Update titles with new language
+            _tabs.set_tab_title(0, ProProfilerLocalization.localize("tabs.logs", "🖨️ Logs"))
+            _tabs.set_tab_title(1, ProProfilerLocalization.localize("tabs.cpu", "⚡ CPU Profiler"))
+            _tabs.set_tab_title(2, ProProfilerLocalization.localize("tabs.disk", "💾 Disk Usage"))
+            _tabs.set_tab_title(3, ProProfilerLocalization.localize("tabs.settings", "⚙️ Settings"))
+
+
+func _apply_initial_visibility(settings_ui: Control) -> void:
+    _tabs.set_tab_hidden(0, !settings_ui._get_setting("show_logs", true))
+    _tabs.set_tab_hidden(1, !settings_ui._get_setting("show_cpu", false))
+    _tabs.set_tab_hidden(2, !settings_ui._get_setting("show_disk", true))
 
 
 func _exit_tree():
@@ -91,4 +120,4 @@ func _exit_tree():
         remove_control_from_bottom_panel(_profiler_dock)
         _profiler_dock.free()
 
-    print_rich("[b]Godot Profiler was Stopped.[/b]")
+    print_rich(ProProfilerLocalization.localize("logs.stopped", "[b]Godot Profiler was Stopped.[/b]"))

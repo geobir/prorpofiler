@@ -54,7 +54,7 @@ func _build_ui() -> void:
     
     # Title
     var title = Label.new()
-    title.text = "Disk Usage Analysis"
+    title.text = ProProfilerLocalization.localize("disk.title", "Disk Usage Analysis")
     title.add_theme_font_size_override("font_size", ProfilerDesign.FONT_SIZE_TITLE)
     title.add_theme_color_override("font_color", ProfilerDesign.COLOR_TEXT)
     header.add_child(title)
@@ -63,14 +63,14 @@ func _build_ui() -> void:
     
     # Scan button
     scan_button = Button.new()
-    scan_button.text = "🔍 Scan Project"
+    scan_button.text = ProProfilerLocalization.localize("disk.scan_button", "🔍 Scan Project")
     scan_button.custom_minimum_size = Vector2(120, ProfilerDesign.HEIGHT_BUTTON)
     scan_button.pressed.connect(_on_scan_pressed)
     header.add_child(scan_button)
     
     # Status label
     status_label = Label.new()
-    status_label.text = "Ready"
+    status_label.text = ProProfilerLocalization.localize("disk.status.ready", "Ready")
     status_label.add_theme_font_size_override("font_size", ProfilerDesign.FONT_SIZE_SMALL)
     status_label.add_theme_color_override("font_color", ProfilerDesign.COLOR_TEXT_DIM)
     status_label.custom_minimum_size = Vector2(200, 0)
@@ -122,8 +122,8 @@ func _build_ui() -> void:
     # ──────────────── Confirmation Dialog ────────────────
     confirm_dialog = ConfirmationDialog.new()
     confirm_dialog.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_MAIN_WINDOW_SCREEN
-    confirm_dialog.ok_button_text = "Yes, Proceed"
-    confirm_dialog.cancel_button_text = "Cancel"
+    confirm_dialog.ok_button_text = ProProfilerLocalization.localize("disk.confirm.ok", "Yes, Proceed")
+    confirm_dialog.cancel_button_text = ProProfilerLocalization.localize("disk.confirm.cancel", "Cancel")
     confirm_dialog.confirmed.connect(_on_confirm_dialog_confirmed)
     add_child(confirm_dialog)
     
@@ -144,25 +144,25 @@ func _create_legend_with_actions() -> HBoxContainer:
     legend.custom_minimum_size = Vector2(300, 0)
     
     var title = Label.new()
-    title.text = "File Type Legend (click to filter)"
+    title.text = ProProfilerLocalization.localize("disk.legend.title", "File Type Legend (click to filter)")
     title.add_theme_font_size_override("font_size", ProfilerDesign.FONT_SIZE_HEADING)
     title.add_theme_color_override("font_color", ProfilerDesign.COLOR_TEXT)
     legend.add_child(title)
     
     var types = [
-        {"name": "Images", "ext": "png"},
-        {"name": "Videos", "ext": "mp4"},
-        {"name": "Audio", "ext": "ogg"},
-        {"name": "Code", "ext": "gd"},
-        {"name": "Scenes", "ext": "tscn"},
-        {"name": "Data", "ext": "json"},
-        {"name": "Shaders", "ext": "gdshader"},
-        {"name": "Fonts", "ext": "ttf"},
+        {"name": ProProfilerLocalization.localize("disk.type.images", "Images"), "ext": "png"},
+        {"name": ProProfilerLocalization.localize("disk.type.videos", "Videos"), "ext": "mp4"},
+        {"name": ProProfilerLocalization.localize("disk.type.audio", "Audio"), "ext": "ogg"},
+        {"name": ProProfilerLocalization.localize("disk.type.code", "Code"), "ext": "gd"},
+        {"name": ProProfilerLocalization.localize("disk.type.scenes", "Scenes"), "ext": "tscn"},
+        {"name": ProProfilerLocalization.localize("disk.type.data", "Data"), "ext": "json"},
+        {"name": ProProfilerLocalization.localize("disk.type.shaders", "Shaders"), "ext": "gdshader"},
+        {"name": ProProfilerLocalization.localize("disk.type.fonts", "Fonts"), "ext": "ttf"},
     ]
     
     # Add "Clear Filter" button
     var clear_btn = Button.new()
-    clear_btn.text = "✕ Clear Filter"
+    clear_btn.text = ProProfilerLocalization.localize("disk.filter.clear", "✕ Clear Filter")
     clear_btn.custom_minimum_size = Vector2(0, 36)
     clear_btn.pressed.connect(_on_filter_clear)
     legend.add_child(clear_btn)

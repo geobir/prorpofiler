@@ -51,13 +51,13 @@ func _build_ui() -> void:
     warning_panel.add_child(warning_vbox)
     
     var warning_title = Label.new()
-    warning_title.text = "⚠️  CPU Profiler Status"
+    warning_title.text = ProProfilerLocalization.localize("cpu.warning.title", "⚠️  CPU Profiler Status")
     warning_title.add_theme_font_size_override("font_size", 16)
     warning_title.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
     warning_vbox.add_child(warning_title)
     
     var warning_text = Label.new()
-    warning_text.text = "The CPU Profiler tab is currently not functional due to Godot's addon API limitations. Godot does not expose sufficient per-process performance data to addons for safe profiling. This feature may be available in future Godot versions."
+    warning_text.text = ProProfilerLocalization.localize("cpu.warning.text", "The CPU Profiler tab is currently not functional due to Godot's addon API limitations. Godot does not expose sufficient per-process performance data to addons for safe profiling. This feature may be available in future Godot versions.")
     warning_text.autowrap_mode = TextServer.AUTOWRAP_WORD
     warning_text.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
     warning_vbox.add_child(warning_text)
@@ -85,7 +85,7 @@ func _build_ui() -> void:
     tree_vbox.custom_minimum_size = Vector2(450, 0)
 
     var tree_header = Label.new()
-    tree_header.text = "  📊 Game Profile (Play to Start)"
+    tree_header.text = ProProfilerLocalization.localize("cpu.tree.header", "  📊 Game Profile (Play to Start)")
     tree_header.add_theme_font_size_override("font_size", 16)
     tree_header.add_theme_color_override("font_color", ProfilerConstants.COLOR_TEXT_DIM)
     tree_header.custom_minimum_size = Vector2(0, 24)
